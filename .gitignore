@@ -1,0 +1,49 @@
+# Python
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Django
+*.log
+*.pot
+*.pyc
+__pycache__/
+db.sqlite3
+media/
+staticfiles/
+local_settings.py
+
+# Environment variables
+.env
+
+# VSCode
+.vscode/
+
+# Mac / Windows files
+.DS_Store
+Thumbs.db
+
+# MyPy
+.mypy_cache/
+
+# Pytest
+.pytest_cache/
+
+# Coverage
+htmlcov/
+.coverage
+.coverage.*
+.cache
+
+# Pipenv
+Pipfile.lock
+
+# Pyre type checker
+.pyre/
