@@ -8,6 +8,7 @@ from .serializers import *
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 import re
+from user_agents import parse
 
 
 
