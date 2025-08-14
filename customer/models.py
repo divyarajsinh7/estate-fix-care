@@ -31,6 +31,7 @@ class CustomerProfile(models.Model):
     otp_created_at = models.DateTimeField(blank=True, null=True)
     created_date = models.DateTimeField(auto_now_add=True)
     updated_date = models.DateTimeField(auto_now=True)
+    categories = models.ManyToManyField('admin_panel.SubCategory', blank=True, related_name='service_categories')
 
     class Meta:
         ordering = ['-created_date']

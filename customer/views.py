@@ -14,6 +14,8 @@ from user_agents import parse
 
 
 class RegisterAPIView(APIView):
+    permission_classes = [AllowAny]
+
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
@@ -49,6 +51,8 @@ class RegisterAPIView(APIView):
     
 
 class VerifyOTPAPIView(APIView):
+    permission_classes = [AllowAny]
+
     def post(self, request):
         mobile = request.data.get("mobile")
         otp_entered = request.data.get("otp")
@@ -70,6 +74,8 @@ class VerifyOTPAPIView(APIView):
         
 
 class VerifyOTPAPIView(APIView):
+    permission_classes = [AllowAny]
+
     def post(self, request):
         country_code = request.data.get("country_code")
         mobile = request.data.get("mobile")
@@ -95,6 +101,8 @@ class VerifyOTPAPIView(APIView):
 
 
 class GenerateOTPAPIView(APIView):
+    permission_classes = [AllowAny]
+
     def post(self, request):
         country_code = request.data.get("country_code")
         mobile = request.data.get("mobile")
@@ -126,7 +134,8 @@ class GenerateOTPAPIView(APIView):
 
 
 class LoginSendOTPView(APIView):
-    """Step 1: Send OTP to user."""
+    permission_classes = [AllowAny]
+
     def post(self, request):
         country_code = request.data.get("country_code")
         mobile = request.data.get("mobile")
@@ -166,7 +175,8 @@ class LoginSendOTPView(APIView):
     
 
 class LoginVerifyOTPView(APIView):
-    """Step 2: Verify OTP and login."""
+    permission_classes = [AllowAny]
+
     def post(self, request):
         country_code = request.data.get("country_code")
         mobile = request.data.get("mobile")

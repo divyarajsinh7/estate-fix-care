@@ -1,5 +1,6 @@
 from django.urls import path
 from .views import *
+from admin_panel.views import *
 
 urlpatterns = [
     path('register/', RegisterAPIView.as_view(), name='register'),
@@ -7,4 +8,8 @@ urlpatterns = [
     path('generate-otp/', GenerateOTPAPIView.as_view(), name='generate-otp'),
     path('login/', LoginSendOTPView.as_view(), name='login-send-otp'),
     path('login/verify-otp/', LoginVerifyOTPView.as_view(), name='login-verify-otp'),
+    path('categories/', CategoryView.as_view()),
+    path('categories/<int:category_id>/', CategoryView.as_view()),
+    path('subcategories/', SubCategoryView.as_view()),
+    path('subcategories/<int:subcategory_id>/', SubCategoryView.as_view()), 
 ]

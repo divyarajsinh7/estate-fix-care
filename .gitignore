@@ -47,3 +47,12 @@ Pipfile.lock
 
 # Pyre type checker
 .pyre/
+
+# Ignore service covers
+service_covers/
+
+# Ignore subcategory images
+subcategory_image/
+
+# Ignore category images
+category_images/
