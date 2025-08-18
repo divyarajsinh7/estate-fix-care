@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import CustomerProfile
+from .models import CustomerProfile, ServiceCart
 
 class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
@@ -49,3 +49,14 @@ class RegisterSerializer(serializers.ModelSerializer):
                         f"{field.replace('_', ' ').capitalize()} is required for electricians"
                     )
         return data
+
+
+class ServiceCartSerializer(serializers.ModelSerializer):
+    service_name = serializers.CharField(source='service.name', read_only=True)
+
+    class Meta:
+        model = ServiceCart
+        fields = [
+            'id', 'service', 'service_name', 'qty', 'num_of_tech',
+            'price', 'total_price', 'status'
+        ]
