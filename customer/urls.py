@@ -12,6 +12,8 @@ urlpatterns = [
     path('categories/<int:category_id>/', CategoryView.as_view()),
     path('subcategories/', SubCategoryView.as_view()),
     path('subcategories/<int:subcategory_id>/', SubCategoryView.as_view()), 
-    path("cart/", CartView.as_view()),  # GET (fetch cart), POST (add item), DELETE (clear cart)
+    path("cart/", CartView.as_view()),
     path("cart/<int:item_id>/", CartView.as_view()),
+    path('payment/otp/', GeneratePaymentOTPView.as_view(), name='payment-generate-otp'),
+    path('payment/checkout/', RazorpayCheckoutView.as_view(), name='razorpay-checkout'),
 ]
