@@ -2,6 +2,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.exceptions import AuthenticationFailed
 from customer.models import CustomerProfile
 from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
+from rest_framework.permissions import BasePermission
 
 class CustomerJWTAuthentication(JWTAuthentication):
     def get_user(self, validated_token):
@@ -17,3 +18,12 @@ class CustomerJWTAuthentication(JWTAuthentication):
             raise AuthenticationFailed("User not found")
         except (TokenError, InvalidToken):
             raise AuthenticationFailed("Token is invalid or expired")
+
+
+class IsAdminRole(BasePermission):
+    """
+    Custom permission to allow only users with role='admin'.
+    """
+
+    def has_permission(self, request, view):
+        return bool(request.user and getattr(request.user, "role", None) == "admin")

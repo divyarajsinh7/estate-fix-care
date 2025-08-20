@@ -10,12 +10,17 @@ class SubCategoryInline(admin.TabularInline):
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
     list_display = ('id', 'category_name', 'created_date', 'updated_date')
+    list_display_links = ('id', 'category_name', 'created_date', 'updated_date') 
     search_fields = ('category_name',)
-    inlines = [SubCategoryInline]
+    readonly_fields = ('created_date', 'updated_date')
+    ordering = ('-created_date',)
 
 
 @admin.register(SubCategory)
 class SubCategoryAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'category', 'section', 'price', 'created_date', 'updated_date')
+    list_display_links = ('id', 'name', 'category', 'section', 'price', 'created_date', 'updated_date')
     list_filter = ('category', 'section')
     search_fields = ('name', 'description', 'faqs')
+    ordering = ('-created_date',)
+    readonly_fields = ('created_date', 'updated_date')

@@ -5,14 +5,18 @@ import os
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from .authentication import IsAdminRole
 
 # Django shortcuts
 from django.shortcuts import get_object_or_404
 from customer.models import CustomerProfile
 from .models import *
 from .serializers import *
+from rest_framework.permissions import BasePermission
 
-# Create your views here.
+class IsRoleAdmin(BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and getattr(request.user, "role", None) == "admin"
 
 class CategoryView(APIView):
     permission_classes = [IsAuthenticated]
@@ -99,3 +103,39 @@ class SubCategoryView(APIView):
         subcategory = get_object_or_404(SubCategory, id=subcategory_id)
         subcategory.delete()
         return Response({"status": 200, "message": "Subcategory deleted", "data": {}})
+
+
+class ElectricianApprovalAPIView(APIView):
+    permission_classes = [IsAdminRole]  # only admin can access
+
+    def post(self, request, electrician_id):
+        try:
+            electrician = CustomerProfile.objects.get(id=electrician_id, role="electrician")
+        except CustomerProfile.DoesNotExist:
+            return Response({
+                "status": 404,
+                "message": "Electrician not found."
+            }, status=404)
+
+        action = request.data.get("action")  # approve / reject
+        if action == "approve":
+            electrician.is_admin_verified = True
+            electrician.save()
+            return Response({
+                "status": 200,
+                "message": "Electrician approved successfully."
+            })
+
+        elif action == "reject":
+            electrician.is_blocked = True
+            electrician.blocked_reason = request.data.get("reason", "Rejected by admin")
+            electrician.save()
+            return Response({
+                "status": 200,
+                "message": "Electrician rejected."
+            })
+
+        return Response({
+            "status": 400,
+            "message": "Invalid action. Use 'approve' or 'reject'."
+        }, status=400)

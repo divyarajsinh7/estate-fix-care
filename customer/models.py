@@ -9,7 +9,7 @@ class CustomerProfile(models.Model):
         ('admin', 'Admin'),
     ]
 
-    username = models.CharField(max_length=150, unique=True, blank=False, null=False)
+    username = models.CharField(max_length=150, blank=False, null=False)
     email = models.EmailField(unique=True, blank=False, null=False)
     country_code = models.CharField(max_length=5, blank=False, null=False, default='+91')
     mobile = models.CharField(max_length=12, unique=True, blank=False, null=False)

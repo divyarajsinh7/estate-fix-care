@@ -29,6 +29,13 @@ class RegisterAPIView(APIView):
             username = serializer.validated_data['username']
             role = serializer.validated_data['role']
 
+            if role == "admin":
+                if CustomerProfile.objects.filter(role="admin").exists():
+                    return Response({
+                        "status": 403,
+                        "message": "Admin already exists. You are not allowed to create another admin."
+                    }, status=403)
+
             # Get or create profile
             customer, created = CustomerProfile.objects.get_or_create(
                 mobile=mobile,
@@ -38,6 +45,12 @@ class RegisterAPIView(APIView):
                     "role": role
                 }
             )
+
+            if not created:
+                return Response({
+                    "status": 400,
+                    "message": "User with this mobile already exists."
+                }, status=400)
 
             # Create OTP
             otp = customer.create_otp()
@@ -239,6 +252,7 @@ class LoginVerifyOTPView(APIView):
             "data": {
                 "user_id": user.id,
                 "country_code": user.country_code,
+                "role": user.role,
                 "mobile": user.mobile,
                 "access_token": str(access),
                 "refresh_token": str(refresh),
