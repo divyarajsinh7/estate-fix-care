@@ -6,7 +6,7 @@ from customer.models import CustomerProfile, SystemLog
 from rest_framework_simplejwt.tokens import RefreshToken
 from user_agents import parse
 
-class ElectricianRegisterAPIView(APIView):
+class ServiceProviderRegisterAPIView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -14,22 +14,26 @@ class ElectricianRegisterAPIView(APIView):
         if serializer.is_valid():
             mobile = serializer.validated_data['mobile']
 
+            # Check if mobile already exists
             if CustomerProfile.objects.filter(mobile=mobile).exists():
                 return Response({
                     "status": 400,
                     "message": "User with this mobile already exists."
                 }, status=400)
 
-            electrician = serializer.save(
+            # Save service provider with default flags
+            service_provider = serializer.save(
                 is_admin_verified=False
             )
 
-            otp = electrician.create_otp()
-            
+            # Generate OTP
+            otp = service_provider.create_otp()
+
             return Response({
                 "status": 200,
                 "message": "OTP sent successfully. Please verify to complete registration.",
-                "otp" : otp,  # Assuming otp is generated and saved in the model
+                "otp": otp,  # just for debugging, remove in production
+                "role": service_provider.role
             })
 
         return Response({

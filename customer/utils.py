@@ -1,29 +1,28 @@
 from .models import *
 
-def create_booking_notifications(user_profile, electrician_profile, booking):
+def create_booking_notifications(user_profile, service_provider_profile, booking):
     """
-    Creates booking notifications for both the customer and the electrician,
+    Creates booking notifications for both the customer and the service provider,
     and includes related party info.
-    Returns: (user_notification, electrician_notification) as dicts.
+    Returns: (user_notification, service_provider_notification) as dicts.
     """
     # For the customer
     user_notification = Notification.objects.create(
         user=user_profile,
-        electrician=electrician_profile,
+        service_provider=service_provider_profile,
         recipient_type='user',
         title='Booking Confirmed',
         message=f"Your booking for '{booking.service.name}' has been confirmed. OTP: {booking.service_start_otp}",
         type='booking',
         channel='app',
         is_sent=True
-        
     )
 
-    # For the electrician
-    electrician_notification = Notification.objects.create(
-        electrician=electrician_profile,
+    # For the service provider
+    service_provider_notification = Notification.objects.create(
+        service_provider=service_provider_profile,
         user=user_profile,
-        recipient_type='electrician',
+        recipient_type='service_provider',
         title='Service Booked For You',
         message=f"You have been assigned a service for '{booking.service.name}'",
         type='booking',
@@ -38,10 +37,10 @@ def create_booking_notifications(user_profile, electrician_profile, booking):
             "title": user_notification.title,
             "message": user_notification.message
         },
-        "electrician_notification": {
-            "id": electrician_notification.id,
-            "title": electrician_notification.title,
-            "message": electrician_notification.message
+        "service_provider_notification": {
+            "id": service_provider_notification.id,
+            "title": service_provider_notification.title,
+            "message": service_provider_notification.message
         }
     }
 

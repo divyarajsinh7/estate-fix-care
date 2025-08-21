@@ -24,11 +24,11 @@ class CustomerProfileAdmin(admin.ModelAdmin):
     )
 
     # Add custom actions
-    actions = ['approve_electrician', 'reject_electrician']
+    actions = ['approve_service_provider', 'reject_service_provider']
 
     def approval_status(self, obj):
         """Show colored status in list view"""
-        if obj.role == "electrician":
+        if obj.role == "service_provider":
             if obj.is_admin_verified:
                 return format_html('<span style="color: green;">Approved</span>')
             elif obj.is_blocked:
@@ -37,15 +37,19 @@ class CustomerProfileAdmin(admin.ModelAdmin):
         return "-"
     approval_status.short_description = "Approval Status"
 
-    def approve_electrician(self, request, queryset):
-        updated = queryset.filter(role="electrician").update(is_admin_verified=True, is_verified=True, is_blocked=False)
-        self.message_user(request, f"{updated} electrician(s) approved.")
-    approve_electrician.short_description = "Approve selected electricians"
+    def approve_service_provider(self, request, queryset):
+        updated = queryset.filter(role="service_provider").update(
+            is_admin_verified=True, is_verified=True, is_blocked=False
+        )
+        self.message_user(request, f"{updated} service provider(s) approved.")
+    approve_service_provider.short_description = "Approve selected service providers"
 
-    def reject_electrician(self, request, queryset):
-        updated = queryset.filter(role="electrician").update(is_admin_verified=False, is_verified=False, is_blocked=True)
-        self.message_user(request, f"{updated} electrician(s) rejected.")
-    reject_electrician.short_description = "Reject selected electricians"
+    def reject_service_provider(self, request, queryset):
+        updated = queryset.filter(role="service_provider").update(
+            is_admin_verified=False, is_verified=False, is_blocked=True
+        )
+        self.message_user(request, f"{updated} service provider(s) rejected.")
+    reject_service_provider.short_description = "Reject selected service providers"
 
 
 @admin.register(Address)

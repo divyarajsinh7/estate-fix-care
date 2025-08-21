@@ -8,6 +8,7 @@ urlpatterns = [
     path('generate-otp/', GenerateOTPAPIView.as_view(), name='generate-otp'),
     path('login/', LoginSendOTPView.as_view(), name='login-send-otp'),
     path('login/verify-otp/', LoginVerifyOTPView.as_view(), name='login-verify-otp'),
+    path("profile/", CustomerProfileView.as_view(), name="customer-profile"),
     path('categories/', CategoryView.as_view()),
     path('categories/<int:category_id>/', CategoryView.as_view()),
     path('subcategories/', SubCategoryView.as_view()),

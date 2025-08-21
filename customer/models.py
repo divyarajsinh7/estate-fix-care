@@ -5,7 +5,7 @@ import random
 class CustomerProfile(models.Model):
     ROLE_METHOD_CHOICES = [
         ('user', 'User'),
-        ('electrician', 'Electrician'),
+        ('service_provider', 'Service Provider'),
         ('admin', 'Admin'),
     ]
 
@@ -32,6 +32,9 @@ class CustomerProfile(models.Model):
     created_date = models.DateTimeField(auto_now_add=True)
     updated_date = models.DateTimeField(auto_now=True)
     categories = models.ManyToManyField('admin_panel.SubCategory', blank=True, related_name='service_categories')
+    date_of_birth = models.DateField(blank=True, null=True)
+    degree = models.CharField(max_length=100, blank=True, null=True)
+    company_policy = models.TextField(blank=True, null=True)
 
     class Meta:
         ordering = ['-created_date']
@@ -71,6 +74,21 @@ class Address(models.Model):
 
     def __str__(self):
         return f"{self.label} - {self.user.username}"
+    
+
+class BankDetail(models.Model):
+    customer = models.ForeignKey(CustomerProfile, on_delete=models.CASCADE, related_name="bank_details")
+    account_holder_name = models.CharField(max_length=150)
+    account_number = models.CharField(max_length=30)
+    ifsc_code = models.CharField(max_length=20)
+    bank_name = models.CharField(max_length=100, blank=True, null=True)
+    branch_name = models.CharField(max_length=100, blank=True, null=True)
+    upi_id = models.CharField(max_length=100, blank=True, null=True)
+    created_date = models.DateTimeField(auto_now_add=True)
+    updated_date = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.account_holder_name} - {self.bank_name} ({self.account_number[-4:]})"
 
 
 class SystemLog(models.Model):
@@ -108,6 +126,7 @@ class ServiceCart(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES ,default='pending')
     created_date = models.DateTimeField(auto_now_add=True)
     updated_date = models.DateTimeField(auto_now=True)
+
 
     def __str__(self):
         return f"{self.service.name} x {self.qty}"
@@ -171,7 +190,7 @@ class Notification(models.Model):
     RECIPIENT_TYPE_CHOICES = [
     ('admin', 'Admin'),
     ('user', 'User'),
-    ('electrician', 'Electrician'),
+    ('service_provider', 'Service Provider'),
     ]
     NOTIFICATION_CHANNEL_CHOICES = [
     ('app', 'App'),
@@ -188,7 +207,7 @@ class Notification(models.Model):
     ]
 
     user = models.ForeignKey(CustomerProfile, on_delete=models.SET_NULL, null=True, blank=True, related_name='notifications')
-    electrician = models.ForeignKey(CustomerProfile, on_delete=models.SET_NULL, null=True, blank=True, related_name='tech_notifications')
+    service_provider  = models.ForeignKey(CustomerProfile, on_delete=models.SET_NULL, null=True, blank=True, related_name='service_notifications')
     recipient_type = models.CharField(max_length=20, choices=RECIPIENT_TYPE_CHOICES,blank=False, null=False, default='user')  # admin, user, electrician
     title = models.CharField(max_length=100, blank=False, null=False)
     message = models.TextField(blank=False, null=False)

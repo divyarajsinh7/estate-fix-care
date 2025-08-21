@@ -261,7 +261,50 @@ class LoginVerifyOTPView(APIView):
                 "browser": browser
             }
         }, status=200)
-    
+
+
+class CustomerProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Retrieve the profile of the logged-in user"""
+        profile = get_object_or_404(CustomerProfile, username=request.user.username)
+        serializer = CustomerProfileSerializer(profile, context={'request': request})
+        return Response({
+            "status": 200,
+            "message": "Profile retrieved",
+            "data": serializer.data
+        })
+
+    # def post(self, request):
+    #     """Create a profile for the logged-in user"""
+    #     # Ensure only one profile per user
+    #     if CustomerProfile.objects.filter(user=request.user).exists():
+    #         return Response({"status": 400, "message": "Profile already exists"})
+
+    #     serializer = CustomerProfileSerializer(data=request.data, context={'request': request})
+    #     if serializer.is_valid():
+    #         serializer.save(user=request.user)  # Bind profile to logged-in user
+    #         return Response({"status": 201, "message": "Profile created", "data": serializer.data})
+    #     return Response({"status": 400, "message": "Validation failed", "errors": serializer.errors})
+
+    def patch(self, request):
+        """Update the profile of the logged-in user"""
+        profile = get_object_or_404(CustomerProfile, username=request.user)
+        serializer = CustomerProfileSerializer(profile, data=request.data, partial=True, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"status": 200, "message": "Profile updated", "data": serializer.data})
+        return Response({"status": 400, "message": "Update failed", "errors": serializer.errors})
+
+
+    def delete(self, request):
+        """Delete the profile of the logged-in user"""
+        profile = get_object_or_404(CustomerProfile, username=request.user)
+        profile.delete()
+        return Response({"status": 200, "message": "Profile deleted", "data": {}})
+
+
 
 class CartView(APIView):
     permission_classes = [IsAuthenticated]
@@ -427,8 +470,8 @@ class RazorpayCheckoutView(APIView):
         bookings, total_amount, notifications_list = [], Decimal("0.0"), []
 
         for item in cart.services.all():
-            electrician = None  
-            booking_status = 'assign' if electrician else 'pending'
+            service_provider = None  
+            booking_status = 'assign' if service_provider else 'pending'
 
             booking = ServiceBook.objects.create(
                 user=user,
@@ -438,15 +481,15 @@ class RazorpayCheckoutView(APIView):
                 is_scheduled=False,
                 service_start_otp=otp,
                 otp_generated_at=booking_obj.otp_generated_at,
-                assigned_technician=electrician
+                assigned_technician=service_provider
             )
 
             total_amount += Decimal(str(item.total_price))
 
-            if electrician:
+            if service_provider:
                 booking_notifications = create_booking_notifications(
                     user_profile=booking.user,
-                    electrician_profile=booking.assigned_technician,
+                    service_provider_profile=booking.assigned_technician,
                     booking=booking
                 )
                 notifications_list.append(booking_notifications)
@@ -454,7 +497,7 @@ class RazorpayCheckoutView(APIView):
             bookings.append({
                 "id": booking.id,
                 "service": item.service.name,
-                "assigned_technician": electrician.username if electrician else None,
+                "assigned_service_provider": service_provider.username if service_provider else None,
                 "status": booking_status,
                 "scheduled_time": booking.scheduled_time if hasattr(booking, "scheduled_time") else None,
                 "created_at": booking.created_at if hasattr(booking, "created_at") else timezone.now()

@@ -105,34 +105,36 @@ class SubCategoryView(APIView):
         return Response({"status": 200, "message": "Subcategory deleted", "data": {}})
 
 
-class ElectricianApprovalAPIView(APIView):
+class ServiceProviderApprovalAPIView(APIView):
     permission_classes = [IsAdminRole]  # only admin can access
 
-    def post(self, request, electrician_id):
+    def post(self, request, provider_id):
         try:
-            electrician = CustomerProfile.objects.get(id=electrician_id, role="electrician")
+            provider = CustomerProfile.objects.get(id=provider_id, role="service_provider")
         except CustomerProfile.DoesNotExist:
             return Response({
                 "status": 404,
-                "message": "Electrician not found."
+                "message": "Service provider not found."
             }, status=404)
 
         action = request.data.get("action")  # approve / reject
         if action == "approve":
-            electrician.is_admin_verified = True
-            electrician.save()
+            provider.is_admin_verified = True
+            provider.is_blocked = False  # just in case it was blocked before
+            provider.save()
             return Response({
                 "status": 200,
-                "message": "Electrician approved successfully."
+                "message": "Service provider approved successfully."
             })
 
         elif action == "reject":
-            electrician.is_blocked = True
-            electrician.blocked_reason = request.data.get("reason", "Rejected by admin")
-            electrician.save()
+            provider.is_blocked = True
+            provider.blocked_reason = request.data.get("reason", "Rejected by admin")
+            provider.is_admin_verified = False
+            provider.save()
             return Response({
                 "status": 200,
-                "message": "Electrician rejected."
+                "message": "Service provider rejected."
             })
 
         return Response({

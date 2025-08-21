@@ -5,7 +5,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomerProfile
         fields = [
-            'username', 'email', 'country_code',  'mobile', 'role',
+            'username', 'email', 'country_code', 'mobile', 'role',
             'profile_image', 'experience_year', 'service_skill',
             'service_km', 'document_type', 'document_file'
         ]
@@ -35,18 +35,18 @@ class RegisterSerializer(serializers.ModelSerializer):
         return value
 
     def validate_role(self, value):
-        allowed_roles = ['user', 'electrician', 'admin']
+        allowed_roles = ['user', 'service_provider', 'admin']
         if value not in allowed_roles:
             raise serializers.ValidationError("Invalid role")
         return value
 
     def validate(self, data):
-        if data.get('role') == 'electrician':
+        if data.get('role') == 'service_provider':
             required_fields = ['experience_year', 'service_skill', 'service_km']
             for field in required_fields:
                 if not data.get(field):
                     raise serializers.ValidationError(
-                        f"{field.replace('_', ' ').capitalize()} is required for electricians"
+                        f"{field.replace('_', ' ').capitalize()} is required for service providers"
                     )
         return data
 
@@ -60,3 +60,24 @@ class ServiceCartSerializer(serializers.ModelSerializer):
             'id', 'service', 'service_name', 'qty', 'num_of_tech',
             'price', 'total_price', 'status'
         ]
+
+
+class CustomerProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomerProfile
+        fields = [
+            "id",
+            "username",
+            "email",
+            "country_code",
+            "mobile",
+            "role",
+            "date_of_birth",
+            "profile_image",
+        ]
+
+    def validate_role(self, value):
+        """Ensure role is only 'user' for customers"""
+        if value != "user":
+            raise serializers.ValidationError("Role must be 'user' for customer.")
+        return value

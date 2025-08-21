@@ -14,8 +14,8 @@ class ServiceRegisterSerializer(serializers.ModelSerializer):
         read_only_fields = ["is_verified", "is_admin_verified"]
 
     def validate_role(self, value):
-        if value != "electrician":
-            raise serializers.ValidationError("Role must be electrician for this API.")
+        if value != "service_provider":
+            raise serializers.ValidationError("Role must be service_provider for this API.")
         return value
 
     def validate_email(self, value):
