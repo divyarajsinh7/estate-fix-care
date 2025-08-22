@@ -84,11 +84,34 @@ class BankDetail(models.Model):
     bank_name = models.CharField(max_length=100, blank=True, null=True)
     branch_name = models.CharField(max_length=100, blank=True, null=True)
     upi_id = models.CharField(max_length=100, blank=True, null=True)
+    is_approved = models.BooleanField(default=True)
     created_date = models.DateTimeField(auto_now_add=True)
     updated_date = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.account_holder_name} - {self.bank_name} ({self.account_number[-4:]})"
+
+
+class PendingBankDetailUpdate(models.Model):
+    bank_detail = models.ForeignKey("BankDetail", on_delete=models.CASCADE, related_name="pending_updates")
+    data = models.JSONField()  # stores new bank detail values
+    created_at = models.DateTimeField(auto_now_add=True)
+    approved = models.BooleanField(default=False)
+    reviewed = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Pending update for {self.bank_detail.customer} - {self.bank_detail.account_number[-4:]}"
+    
+
+class PendingProfileUpdate(models.Model):
+    profile = models.ForeignKey(CustomerProfile, on_delete=models.CASCADE, related_name="pending_updates")
+    data = models.JSONField() 
+    created_at = models.DateTimeField(auto_now_add=True)
+    approved = models.BooleanField(default=False)
+    reviewed = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Pending update for {self.profile.username}"
 
 
 class SystemLog(models.Model):

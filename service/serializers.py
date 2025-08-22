@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from customer.models import CustomerProfile, Address
+from customer.models import CustomerProfile, Address, BankDetail
 
 class ServiceRegisterSerializer(serializers.ModelSerializer):
     class Meta:
@@ -40,3 +40,43 @@ class ServiceProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomerProfile
         fields = "__all__" 
+
+
+class AddressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Address
+        fields = "__all__"
+        read_only_fields = ["id", "created_date", "updated_date", "user"]
+
+
+class BankDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BankDetail
+        fields = "__all__"
+        read_only_fields = ["id", "created_date", "updated_date", "customer"]
+
+
+class ServiceProviderProfileSerializer(serializers.ModelSerializer):
+    addresses = AddressSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = CustomerProfile
+        exclude = ["otp", "otp_created_at", "updated_date"]
+
+
+class BankDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BankDetail
+        fields = [
+            "id",
+            "account_holder_name",
+            "account_number",
+            "ifsc_code",
+            "bank_name",
+            "branch_name",
+            "upi_id",
+            "is_approved",
+            "created_date",
+            "updated_date",
+        ]
+        read_only_fields = ["id", "is_approved", "created_date", "updated_date"]

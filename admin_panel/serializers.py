@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import *
+from customer.models import PendingProfileUpdate, PendingBankDetailUpdate
 import os
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -57,3 +58,15 @@ class SubCategorySerializer(serializers.ModelSerializer):
         elif obj.image:
             return obj.image.url
         return None
+
+
+class PendingProfileUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PendingProfileUpdate
+        fields = "__all__"
+
+
+class PendingBankDetailUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PendingBankDetailUpdate
+        fields = ["id", "bank_detail", "data", "created_at", "approved", "reviewed"]

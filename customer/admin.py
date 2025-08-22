@@ -1,6 +1,7 @@
 from django.contrib import admin
-from .models import CustomerProfile, Address
+from .models import CustomerProfile, Address, BankDetail, PendingProfileUpdate, PendingBankDetailUpdate
 from django.utils.html import format_html
+from .serializers import CustomerProfileSerializer
 
 
 class AddressInline(admin.TabularInline):  
@@ -71,3 +72,85 @@ class AddressAdmin(admin.ModelAdmin):
     )
 
     readonly_fields = ('id',)
+
+
+
+
+
+@admin.register(PendingProfileUpdate)
+class PendingProfileUpdateAdmin(admin.ModelAdmin):
+    list_display = ("id", "profile", "created_at", "approved", "reviewed")
+    list_filter = ("approved", "reviewed", "created_at")
+    search_fields = ("profile__username", "profile__email")
+
+    actions = ["approve_updates", "reject_updates"]
+
+    def approve_updates(self, request, queryset):
+        for pending in queryset.filter(reviewed=False):
+            data = pending.data
+            profile = pending.profile
+
+            # Apply profile changes
+            serializer = CustomerProfileSerializer(profile, data=data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+
+            # Apply address changes if present
+            addresses_data = data.get("addresses", [])
+            for addr in addresses_data:
+                addr_id = addr.get("id")
+
+                # 🔑 Map external keys to actual model fields
+                addr["address"] = addr.pop("street", addr.get("address", None))
+                addr["pincode"] = addr.pop("zip_code", addr.get("pincode", None))
+
+                if addr_id:
+                    Address.objects.filter(id=addr_id, user=profile).update(**addr)
+                else:
+                    Address.objects.create(user=profile, **addr)
+
+            pending.approved = True
+            pending.reviewed = True
+            pending.save()
+
+        self.message_user(request, "Selected profile updates approved and applied.")
+
+    approve_updates.short_description = "Approve and apply selected profile updates"
+
+    def reject_updates(self, request, queryset):
+        queryset.update(approved=False, reviewed=True)
+        self.message_user(request, "Selected profile updates rejected.")
+
+    reject_updates.short_description = "Reject selected profile updates"
+
+
+@admin.register(BankDetail)
+class BankDetailAdmin(admin.ModelAdmin):
+    list_display = ["customer", "bank_name", "account_number", "is_approved"]
+
+
+@admin.register(PendingBankDetailUpdate)
+class PendingBankDetailUpdateAdmin(admin.ModelAdmin):
+    list_display = ("bank_detail", "customer_name", "created_at", "approved", "reviewed")
+    actions = ["approve_updates", "reject_updates"]
+
+    def customer_name(self, obj):
+        return obj.bank_detail.customer  # shows linked customer
+    customer_name.short_description = "Customer"
+
+    def approve_updates(self, request, queryset):
+        for pending in queryset:
+            bank = pending.bank_detail
+            # apply only changed fields from JSON
+            for field, value in pending.data.items():
+                setattr(bank, field, value)
+
+            bank.is_approved = True
+            bank.save()
+            pending.delete()
+
+        self.message_user(request, "✅ Selected pending updates approved.")
+
+    def reject_updates(self, request, queryset):
+        queryset.delete()
+        self.message_user(request, "❌ Selected pending updates rejected.")

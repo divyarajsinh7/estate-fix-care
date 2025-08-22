@@ -9,10 +9,12 @@ from .authentication import IsAdminRole
 
 # Django shortcuts
 from django.shortcuts import get_object_or_404
-from customer.models import CustomerProfile
+from customer.models import CustomerProfile, Address, PendingProfileUpdate, PendingBankDetailUpdate
+from customer.serializers import CustomerProfileSerializer
 from .models import *
 from .serializers import *
 from rest_framework.permissions import BasePermission
+from service.serializers import BankDetailSerializer
 
 class IsRoleAdmin(BasePermission):
     def has_permission(self, request, view):
@@ -141,3 +143,97 @@ class ServiceProviderApprovalAPIView(APIView):
             "status": 400,
             "message": "Invalid action. Use 'approve' or 'reject'."
         }, status=400)
+
+
+class PendingProfileApprovalView(APIView):
+    permission_classes = [IsAdminRole]
+
+    def get(self, request):
+        """Fetch all pending profile update requests"""
+        pending_requests = PendingProfileUpdate.objects.filter(reviewed=False)
+        serializer = PendingProfileUpdateSerializer(pending_requests, many=True)
+        return Response({"status": 200, "data": serializer.data})
+
+    def patch(self, request, pk):
+        """Approve or Reject a pending profile update"""
+        pending = get_object_or_404(PendingProfileUpdate, id=pk, reviewed=False)
+        action = request.data.get("action")
+
+        if action == "approve":
+            data = pending.data
+            profile = pending.profile
+
+            # ✅ Update main profile
+            from service.serializers import ServiceProviderProfileSerializer, AddressSerializer
+            serializer = ServiceProviderProfileSerializer(profile, data=data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+
+            # ✅ Handle addresses
+            addresses_data = data.get("addresses", [])
+            for addr in addresses_data:
+                addr_id = addr.get("id")
+                if addr_id:
+                    try:
+                        address_instance = Address.objects.get(id=addr_id, user=profile)
+                        addr_serializer = AddressSerializer(address_instance, data=addr, partial=True)
+                        addr_serializer.is_valid(raise_exception=True)
+                        addr_serializer.save()
+                    except Address.DoesNotExist:
+                        continue
+                else:
+                    # FIX: set user via save()
+                    addr_serializer = AddressSerializer(data=addr)
+                    addr_serializer.is_valid(raise_exception=True)
+                    addr_serializer.save(user=profile)
+
+            pending.approved = True
+            pending.reviewed = True
+            pending.save()
+
+            return Response({"status": 200, "message": "Profile update approved and applied"})
+
+        elif action == "reject":
+            pending.reviewed = True
+            pending.approved = False
+            pending.save()
+            return Response({"status": 200, "message": "Profile update request rejected"})
+
+        return Response({"status": 400, "message": "Invalid action"})
+    
+
+class PendingBankDetailApprovalView(APIView):
+    permission_classes = [IsAdminRole]
+
+    def get(self, request):
+        """Fetch all pending bank detail update requests"""
+        pending = PendingBankDetailUpdate.objects.filter(reviewed=False)
+        serializer = PendingBankDetailUpdateSerializer(pending, many=True)
+        return Response({"status": 200, "data": serializer.data})
+
+    def patch(self, request, pk):
+        """Approve or reject a pending bank detail update"""
+        pending = get_object_or_404(PendingBankDetailUpdate, id=pk, reviewed=False)
+        action = request.data.get("action")
+
+        if action == "approve":
+            data = pending.data
+            bank_detail = pending.bank_detail
+
+            serializer = BankDetailSerializer(bank_detail, data=data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+
+            pending.approved = True
+            pending.reviewed = True
+            pending.save()
+
+            return Response({"status": 200, "message": "Bank detail update approved and applied"})
+
+        elif action == "reject":
+            pending.reviewed = True
+            pending.approved = False
+            pending.save()
+            return Response({"status": 200, "message": "Bank detail update request rejected"})
+
+        return Response({"status": 400, "message": "Invalid action"})

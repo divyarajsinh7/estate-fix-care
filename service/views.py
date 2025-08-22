@@ -1,10 +1,15 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
-from .serializers import ServiceRegisterSerializer, ServiceProfileSerializer
-from customer.models import CustomerProfile, SystemLog
+from .serializers import *
+from customer.models import CustomerProfile, SystemLog, PendingProfileUpdate, BankDetail, PendingBankDetailUpdate
 from rest_framework_simplejwt.tokens import RefreshToken
 from user_agents import parse
+from rest_framework.permissions import IsAuthenticated
+from django.shortcuts import get_object_or_404
+from rest_framework.exceptions import PermissionDenied
+from rest_framework import status
+
 
 class ServiceProviderRegisterAPIView(APIView):
     permission_classes = [AllowAny]
@@ -162,3 +167,97 @@ class LoginVerifyServiceOTPView(APIView):
                 "browser": browser
             }
         }, status=200)
+    
+
+class SerivceProviderProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self, request):
+        profile = get_object_or_404(CustomerProfile, email=request.user.email)
+        if profile.role != "service_provider":
+            raise PermissionDenied("Only service providers can access this endpoint.")
+        return profile
+
+    def get(self, request):
+        profile = self.get_object(request)
+        serializer = ServiceProviderProfileSerializer(profile, context={'request': request})
+        return Response({
+            "status": 200,
+            "message": "Profile retrieved",
+            "data": serializer.data
+        })
+
+    def patch(self, request):
+        profile = self.get_object(request)
+
+        # Instead of saving directly → store request as pending update
+        pending_update = PendingProfileUpdate.objects.create(
+            profile=profile,
+            data=request.data
+        )
+
+        return Response({
+            "status": 202,
+            "message": "Update request submitted for admin approval",
+            "pending_id": pending_update.id
+        })
+
+    def delete(self, request):
+        profile = self.get_object(request)
+        profile.delete()
+        return Response({"status": 200, "message": "Profile deleted", "data": {}})
+
+
+class BankDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_profile(self, request):
+        """Fetch logged-in user's service_provider profile"""
+        return get_object_or_404(
+            CustomerProfile, email=request.user.email, role="service_provider"
+        )
+
+    def get(self, request):
+        profile = self.get_profile(request)
+        bank_details = profile.bank_details.all()
+        serializer = BankDetailSerializer(bank_details, many=True)
+        return Response(
+            {"status": 200, "message": "Bank details retrieved", "data": serializer.data}
+        )
+
+    def post(self, request):
+        profile = self.get_profile(request)
+        serializer = BankDetailSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(customer=profile)
+            return Response(
+                {"status": 201, "message": "Bank detail added", "data": serializer.data},
+                status=status.HTTP_201_CREATED,
+            )
+        return Response({"status": 400, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, pk):
+        """Instead of updating directly, create a pending update request"""
+        profile = self.get_profile(request)
+        bank_detail = get_object_or_404(BankDetail, id=pk, customer=profile)
+
+        # Save the update request into PendingBankDetailUpdate
+        pending_update = PendingBankDetailUpdate.objects.create(
+            bank_detail=bank_detail,
+            data=request.data
+        )
+
+        return Response(
+            {
+                "status": 202,
+                "message": "Bank detail update submitted for admin approval",
+                "pending_update_id": pending_update.id,
+            },
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+    def delete(self, request, pk):
+        profile = self.get_profile(request)
+        bank_detail = get_object_or_404(BankDetail, id=pk, customer=profile)
+        bank_detail.delete()
+        return Response({"status": 200, "message": "Bank detail deleted"})

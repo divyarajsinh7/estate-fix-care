@@ -8,6 +8,10 @@ urlpatterns = [
     path('categories/<int:category_id>/', CategoryView.as_view()),
     path('subcategories/', SubCategoryView.as_view()),
     path('subcategories/<int:subcategory_id>/', SubCategoryView.as_view()), 
+    path("pending-profiles/", PendingProfileApprovalView.as_view(), name="pending-profiles-list"),
+    path("pending-profiles/<int:pk>/", PendingProfileApprovalView.as_view(), name="pending-profile-approve"),
+    path("pending-bank-details/", PendingBankDetailApprovalView.as_view()),
+    path("pending-bank-details/<int:pk>/", PendingBankDetailApprovalView.as_view()),
 ]
 
 if settings.DEBUG:
