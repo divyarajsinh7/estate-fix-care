@@ -12,9 +12,11 @@ urlpatterns = [
     path('categories/', CategoryView.as_view()),
     path('categories/<int:category_id>/', CategoryView.as_view()),
     path('subcategories/', SubCategoryView.as_view()),
-    path('subcategories/<int:subcategory_id>/', SubCategoryView.as_view()), 
+    path('categories/<int:category_id>/subcategories/', SubCategoryView.as_view()),
+    path('subcategories/<int:subcategory_id>/items/', SubCategoryItemView.as_view()),
     path("cart/", CartView.as_view()),
     path("cart/<int:item_id>/", CartView.as_view()),
     path('payment/otp/', GeneratePaymentOTPView.as_view(), name='payment-generate-otp'),
     path('payment/checkout/', RazorpayCheckoutView.as_view(), name='razorpay-checkout'),
+    path("razorpay/verify-payment/", RazorpayVerifyPaymentView.as_view(), name="razorpay-verify-payment"),
 ]

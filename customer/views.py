@@ -199,6 +199,7 @@ class LoginVerifyOTPView(APIView):
         country_code = request.data.get("country_code")
         mobile = request.data.get("mobile")
         otp_entered = request.data.get("otp")
+        fcm_token = request.data.get("fcm_token")
 
         if not country_code or not mobile or not otp_entered:
             return Response({"status": 400, "message": "country_code, mobile, and otp are required"}, status=400)
@@ -219,6 +220,9 @@ class LoginVerifyOTPView(APIView):
         # OTP verified → clear OTP fields
         user.otp = None
         user.otp_created_at = None
+
+        if fcm_token:
+            user.fcm_token = fcm_token
         user.save()
 
         # Device Detection
@@ -467,7 +471,10 @@ class RazorpayCheckoutView(APIView):
         if not default_address:
             return Response({"status": 400, "message": "No default address found"}, status=400)
 
-        bookings, total_amount, notifications_list = [], Decimal("0.0"), []
+        bookings = []  # real ServiceBook objects
+        bookings_response = []  # dicts for API response
+        total_amount = Decimal("0.0")
+        notifications_list = []
 
         for item in cart.services.all():
             service_provider = None  
@@ -484,6 +491,7 @@ class RazorpayCheckoutView(APIView):
                 assigned_technician=service_provider
             )
 
+            bookings.append(booking)  # ✅ save the instance
             total_amount += Decimal(str(item.total_price))
 
             if service_provider:
@@ -494,13 +502,13 @@ class RazorpayCheckoutView(APIView):
                 )
                 notifications_list.append(booking_notifications)
 
-            bookings.append({
+            bookings_response.append({
                 "id": booking.id,
                 "service": item.service.name,
                 "assigned_service_provider": service_provider.username if service_provider else None,
                 "status": booking_status,
-                "scheduled_time": booking.scheduled_time if hasattr(booking, "scheduled_time") else None,
-                "created_at": booking.created_at if hasattr(booking, "created_at") else timezone.now()
+                "scheduled_time": getattr(booking, "scheduled_time", None),
+                "created_at": getattr(booking, "created_at", timezone.now())
             })
 
         # ✅ Razorpay order
@@ -511,11 +519,16 @@ class RazorpayCheckoutView(APIView):
             "payment_capture": "1"
         })
 
-        ServiceBook.objects.filter(id__in=[b["id"] for b in bookings]).update(
-            quatation_amt=total_amount,
-            comment=f"Razorpay Order ID: {razorpay_order['id']}"
+        # ✅ Save payment with ServiceBook instance
+        payment = Payment.objects.create(
+            booking=bookings[0],  # first booking object
+            user=user,
+            order_id=razorpay_order["id"],
+            amount=total_amount,
+            status="pending"
         )
 
+        # Clear the cart
         cart.services.all().delete()
 
         # ✅ Build full response
@@ -528,9 +541,8 @@ class RazorpayCheckoutView(APIView):
                     "currency": "INR",
                     "razorpay_order_id": razorpay_order["id"],
                     "payment_status": razorpay_order.get("status", "created"), 
-                    "payment_method": None
                 },
-                "bookings": bookings,
+                "bookings": bookings_response,
                 "customer": {
                     "id": user.id,
                     "name": user.username,
@@ -556,34 +568,54 @@ class RazorpayCheckoutView(APIView):
 
         return Response(response_data)
 
-
     
 
-# class VerifyPaymentView(APIView):
-#     permission_classes = [IsAuthenticated]
+class RazorpayVerifyPaymentView(APIView):
+    permission_classes = [IsAuthenticated]
 
-#     def post(self, request):
-#         razorpay_payment_id = request.data.get("razorpay_payment_id")
-#         razorpay_order_id = request.data.get("razorpay_order_id")
-#         razorpay_signature = request.data.get("razorpay_signature")
+    def post(self, request):
+        razorpay_payment_id = request.data.get("razorpay_payment_id")
+        razorpay_order_id = request.data.get("razorpay_order_id")
+        razorpay_signature = request.data.get("razorpay_signature")
 
-#         if not (razorpay_payment_id and razorpay_order_id and razorpay_signature):
-#             return Response({"status": 400, "message": "Missing payment details"}, status=400)
+        client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
 
-#         try:
-#             # ✅ Verify payment signature
-#             params_dict = {
-#                 "razorpay_order_id": razorpay_order_id,
-#                 "razorpay_payment_id": razorpay_payment_id,
-#                 "razorpay_signature": razorpay_signature
-#             }
-#             razorpay_client.utility.verify_payment_signature(params_dict)
+        try:
+            client.utility.verify_payment_signature({
+                "razorpay_order_id": razorpay_order_id,
+                "razorpay_payment_id": razorpay_payment_id,
+                "razorpay_signature": razorpay_signature
+            })
+        except razorpay.errors.SignatureVerificationError:
+            return Response({"status": 400, "message": "Signature verification failed"}, status=400)
 
-#             # ✅ Update bookings as PAID
-#             ServiceBook.objects.filter(comment__icontains=razorpay_order_id).update(
-#                 status="complete"
-#             )
+        # ✅ Find Payment by order_id
+        try:
+            payment = Payment.objects.get(order_id=razorpay_order_id)
+        except Payment.DoesNotExist:
+            return Response({"status": 404, "message": "Payment record not found"}, status=404)
+        
+        if payment.status == "success":
+            return Response({"status": 200, "message": "Payment already verified"})
 
-#             return Response({"status": 200, "message": "Payment verified successfully"})
-#         except razorpay.errors.SignatureVerificationError:
-#             return Response({"status": 400, "message": "Payment verification failed"}, status=400)
+        details = client.payment.fetch(razorpay_payment_id)
+
+        # Update with payment_id and success
+        payment.payment_id = razorpay_payment_id
+        payment.status = "success"
+        payment.method = request.data.get("method", "")
+        payment.receipt_url = details.get("invoice_id", "")
+        payment.save()
+
+        return Response({
+            "status": 200,
+            "message": "Payment verified successfully",
+            "data": {
+                "order_id": payment.order_id,
+                "payment_id": payment.payment_id,
+                "status": payment.status,
+                "amount": str(payment.amount),
+                "username": payment.user.username,
+                "email": payment.user.email 
+            }
+        })

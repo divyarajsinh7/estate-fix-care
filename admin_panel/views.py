@@ -67,15 +67,28 @@ class CategoryView(APIView):
 class SubCategoryView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, subcategory_id=None):
-        if subcategory_id:
-            subcategory = get_object_or_404(SubCategory, id=subcategory_id)
-            serializer = SubCategorySerializer(subcategory, context={'request': request})
-            return Response({"status": 200, "message": "Subcategory retrieved", "data": serializer.data})
+    def get(self, request, category_id=None):
+        if not category_id:
+            return Response(
+                {"status": 400, "message": "Category ID is required"},
+                status=400
+            )
+
+        subcategories = SubCategory.objects.filter(category_id=category_id).order_by('-created_date')
+
+        if not subcategories.exists():
+            return Response(
+                {"status": 404, "message": "No subcategories found for this category"},
+                status=404
+            )
+
+        if hasattr(request.user, "role") and request.user.role == "admin":
+            serializer_class = SubCategorySerializer
         else:
-            subcategories = SubCategory.objects.all().order_by('-created_date')
-            serializer = SubCategorySerializer(subcategories, many=True, context={'request': request})
-            return Response({"status": 200, "message": "Subcategories fetched", "data": serializer.data})
+            serializer_class = SubCategoryPublicSerializer
+
+        serializer = serializer_class(subcategories, many=True, context={'request': request})
+        return Response({"status": 200, "message": "Subcategories fetched", "data": serializer.data})
 
     def post(self, request):
         if not isinstance(request.user, CustomerProfile) or request.user.role != 'admin':
@@ -105,6 +118,71 @@ class SubCategoryView(APIView):
         subcategory = get_object_or_404(SubCategory, id=subcategory_id)
         subcategory.delete()
         return Response({"status": 200, "message": "Subcategory deleted", "data": {}})
+
+
+class SubCategoryItemView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    # Get all items for a subcategory (allowed for all users)
+    def get(self, request, subcategory_id):
+        items = SubCategoryItem.objects.filter(subcategory_id=subcategory_id)
+        if not items.exists():
+            return Response(
+                {"status": 404, "message": "No items found for this subcategory"},
+                status=404
+            )
+
+        serializer = SubCategoryItemSerializer(items, many=True)
+        return Response({"status": 200, "message": "Items fetched", "data": serializer.data})
+
+    # Create new item inside a subcategory (only admin)
+    def post(self, request, subcategory_id):
+        if request.user.role != 'admin':
+            return Response(
+                {"status": 403, "message": "Only admin can create items"},
+                status=403
+            )
+
+        data = request.data.copy()
+        data['subcategory'] = subcategory_id  # force bind to this subcategory
+
+        serializer = SubCategoryItemSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"status": 201, "message": "Item created", "data": serializer.data})
+        return Response({"status": 400, "message": "Validation failed", "errors": serializer.errors})
+
+    # Update an existing item (only admin)
+    def patch(self, request, item_id):
+        if request.user.role != 'admin':
+            return Response(
+                {"status": 403, "message": "Only admin can update items"},
+                status=403
+            )
+
+        item = get_object_or_404(SubCategoryItem, id=item_id)
+
+        # prevent updating subcategory
+        data = request.data.copy()
+        data.pop("subcategory", None)
+
+        serializer = SubCategoryItemSerializer(item, data=data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"status": 200, "message": "Item updated", "data": serializer.data})
+        return Response({"status": 400, "message": "Update failed", "errors": serializer.errors})
+
+    # Delete an item (only admin)
+    def delete(self, request, item_id):
+        if request.user.role != 'admin':
+            return Response(
+                {"status": 403, "message": "Only admin can delete items"},
+                status=403
+            )
+
+        item = get_object_or_404(SubCategoryItem, id=item_id)
+        item.delete()
+        return Response({"status": 200, "message": "Item deleted", "data": {}})
 
 
 class ServiceProviderApprovalAPIView(APIView):

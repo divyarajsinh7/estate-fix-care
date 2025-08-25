@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, SubCategory
+from .models import *
 
 
 class SubCategoryInline(admin.TabularInline):  
@@ -24,3 +24,11 @@ class SubCategoryAdmin(admin.ModelAdmin):
     search_fields = ('name', 'description', 'faqs')
     ordering = ('-created_date',)
     readonly_fields = ('created_date', 'updated_date')
+
+
+@admin.register(SubCategoryItem)
+class SubCategoryItemAdmin(admin.ModelAdmin):
+    list_display = ("id", "title", "subcategory", "created_date", "updated_date")
+    list_filter = ("subcategory",)
+    search_fields = ("title", "subcategory__name")
+    ordering = ("-created_date",)

@@ -35,6 +35,9 @@ class CustomerProfile(models.Model):
     date_of_birth = models.DateField(blank=True, null=True)
     degree = models.CharField(max_length=100, blank=True, null=True)
     company_policy = models.TextField(blank=True, null=True)
+    fcm_token = models.CharField(max_length=255, blank=True, null=True)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
 
     class Meta:
         ordering = ['-created_date']
@@ -242,3 +245,26 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"To {self.recipient_type} - {self.title}"
+
+
+class Payment(models.Model):
+    PAYMENT_STATUS = [
+        ("pending", "Pending"),
+        ("success", "Success"),
+        ("failed", "Failed"),
+        ("refunded", "Refunded"),
+    ]
+
+    booking = models.ForeignKey("ServiceBook", on_delete=models.CASCADE, related_name="payments")
+    user = models.ForeignKey("CustomerProfile", on_delete=models.CASCADE, related_name="payments")
+    order_id = models.CharField(max_length=255, null=True, blank=True)
+    payment_id = models.CharField(max_length=255, null=True, blank=True)
+    amount = models.FloatField()
+    status = models.CharField(max_length=20, choices=PAYMENT_STATUS, default="pending")
+    method = models.CharField(max_length=50, blank=True, null=True)
+    transaction_date = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    receipt_url = models.CharField(max_length=255, blank=True, null=True)
+
+    def __str__(self):
+        return f"Payment {self.payment_id} - {self.status}"

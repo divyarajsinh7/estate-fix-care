@@ -2,12 +2,17 @@ from rest_framework import serializers
 from .models import CustomerProfile, ServiceCart
 
 class RegisterSerializer(serializers.ModelSerializer):
+    fcm_token = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    latitude = serializers.DecimalField(required=False, max_digits=9, decimal_places=6, allow_null=True)
+    longitude = serializers.DecimalField(required=False, max_digits=9, decimal_places=6, allow_null=True)
+
     class Meta:
         model = CustomerProfile
         fields = [
             'username', 'email', 'country_code', 'mobile', 'role',
             'profile_image', 'experience_year', 'service_skill',
-            'service_km', 'document_type', 'document_file'
+            'service_km', 'document_type', 'document_file',
+            'fcm_token', 'latitude', 'longitude'
         ]
 
     def validate_username(self, value):
@@ -74,6 +79,8 @@ class CustomerProfileSerializer(serializers.ModelSerializer):
             "role",
             "date_of_birth",
             "profile_image",
+            "latitude",
+            "longitude"
         ]
 
     def validate_role(self, value):
